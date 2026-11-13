@@ -38,6 +38,13 @@ const Teacher* SystemContext::find_teacher(int teacher_id) const {
     return nullptr;
 }
 
+const Administrator* SystemContext::find_administrator(int administrator_id) const {
+    for (const Administrator& item : administrators_) {
+        if (item.administrator_id == administrator_id) return &item;
+    }
+    return nullptr;
+}
+
 const Student* SystemContext::find_student_by_number(const std::string& number) const {
     for (const Student& item : students_) {
         if (item.student_number == number) return &item;
@@ -86,7 +93,7 @@ int SystemContext::enrollment_count(int teaching_class_id) const {
 int SystemContext::remaining_seats(int teaching_class_id) const {
     TeachingClass item{};
     if (!find_teaching_class(teaching_class_id, item)) return 0;
-    // 唯一的余量算法：三个端都调它，不可能出现两个数对不上
+    // The only seat calculation; every view calls it, so the numbers always agree.
     return item.capacity - enrollment_count(teaching_class_id);
 }
 
