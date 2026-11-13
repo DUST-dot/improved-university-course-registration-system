@@ -14,7 +14,7 @@ std::string to_lower(std::string text) {
 }
 
 bool contains_text(const std::string& haystack, const std::string& needle) {
-    if (needle.empty()) return true;   // 空关键词等于不限
+    if (needle.empty()) return true;
     return haystack.find(needle) != std::string::npos;
 }
 
@@ -28,8 +28,6 @@ CourseCatalogService::CourseCatalogService(const SystemContext& context)
     : context_(context) {}
 
 bool CourseCatalogService::filter_is_valid(const CourseFilter& filter) const {
-    // 只允许 -1（不限）或非负值；上限放到 30，比任何真实课程学分都宽，
-    // 这样"填成 999"会被判成非法输入，而不是静默返回空列表。
     if (filter.minimum_credits < -1 || filter.maximum_credits < -1) return false;
     if (filter.minimum_credits > 30 || filter.maximum_credits > 30) return false;
     if (filter.minimum_credits >= 0 && filter.maximum_credits >= 0 &&
@@ -55,7 +53,6 @@ bool CourseCatalogService::class_passes_teacher_filter(const TeachingClass& item
 bool CourseCatalogService::course_matches(const Course& course,
                                           const std::string& lowered_keyword,
                                           const CourseFilter& filter) const {
-    // 1. 课程级条件：代码、精确学分、学分闭区间。任一项不符直接排除。
     if (!filter.course_code.empty() &&
         to_lower(course.course_code) != to_lower(filter.course_code)) {
         return false;
@@ -64,8 +61,6 @@ bool CourseCatalogService::course_matches(const Course& course,
     if (filter.minimum_credits >= 0 && course.credits < filter.minimum_credits) return false;
     if (filter.maximum_credits >= 0 && course.credits > filter.maximum_credits) return false;
 
-    // 2. 教师级条件：先找出同时满足 teacher_id 与 teacher_keyword 的教学班。
-    //    两类条件必须落在同一个班上，否则会拼出一个学生没在找的结果。
     const bool teacher_filter_active =
         filter.teacher_id >= 0 || !filter.teacher_keyword.empty();
     bool has_candidate_class = false;
@@ -82,7 +77,6 @@ bool CourseCatalogService::course_matches(const Course& course,
     }
     if (teacher_filter_active && !has_candidate_class) return false;
 
-    // 3. 关键词：命中课程代码/名称，或命中某个合格班级的教师姓名。
     const bool course_level_match =
         contains_text(to_lower(course.course_code), lowered_keyword) ||
         contains_text(to_lower(course.course_name), lowered_keyword);
@@ -95,7 +89,6 @@ CourseView CourseCatalogService::build_view(const Course& course,
     view.course = course;
     for (const TeachingClass& item : context_.teaching_classes()) {
         if (item.course_id != course.course_id) continue;
-        // 只列出通过教师条件的班，搜索结果里不会混进别的老师的教学班
         if (!class_passes_teacher_filter(item, filter)) continue;
 
         TeachingClassView class_view{};
@@ -132,12 +125,11 @@ OperationResult CourseCatalogService::search(const std::string& keyword,
               [](const CourseView& left, const CourseView& right) {
                   return left.course.course_code < right.course.course_code;
               });
-    // 没有匹配不是错误，界面据此提示"没有课程匹配这个关键词"
     return {ResultCode::Success, "Search completed"};
 }
 
 OperationResult CourseCatalogService::detail(int course_id, CourseView& result) const {
-    result = CourseView{};   // 失败时留空，不残留上一次查询
+    result = CourseView{};
     Course course{};
     if (!context_.find_course(course_id, course)) {
         return {ResultCode::RecordNotFound, "Course not found"};

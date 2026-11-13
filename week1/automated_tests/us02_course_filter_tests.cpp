@@ -1,7 +1,5 @@
-// 2.2 US-02 课程筛选
+// US-02 section
 //
-// 覆盖：无筛选基线、学分上下限与闭区间、教师姓名关键字（含大小写与同班约束）、
-// teacher_id 与关键字的冲突组合、与既有精确学分/关键词组合、非法区间。
 
 #include "test_support.hpp"
 
@@ -34,32 +32,28 @@ std::string class_ids_of(const CourseView& view) {
 int main() {
     SystemContext context = test_support::make_context();
     context.set_now_for_tests("2026-10-05T09:00");
-    context.add_enrollment(1002, 10);   // 教学班 10：容量 2、已选 1
+    context.add_enrollment(1002, 10);
 
     CourseCatalogService catalog(context);
     std::vector<CourseView> found;
     const CourseFilter no_filter;
 
-    // ---- 基线：不带任何条件返回全部课程 ----
     check_code(catalog.search("", no_filter, found).code, ResultCode::Success,
                "search without filters succeeds");
     check(codes_of(found) == "CS101,MA101,SE101", "no filter returns all three courses");
 
-    // ---- 学分下限 ----
     CourseFilter at_least_four;
     at_least_four.minimum_credits = 4;
     check(catalog.search("", at_least_four, found).code == ResultCode::Success,
           "lower bound search succeeds");
     check(codes_of(found) == "CS101,MA101", "credits >= 4 keeps MA101 and CS101");
 
-    // ---- 学分上限 ----
     CourseFilter at_most_three;
     at_most_three.maximum_credits = 3;
     check(catalog.search("", at_most_three, found).code == ResultCode::Success,
           "upper bound search succeeds");
     check(codes_of(found) == "SE101", "credits <= 3 keeps only SE101");
 
-    // ---- 闭区间：两端都能取到 ----
     CourseFilter four_to_five;
     four_to_five.minimum_credits = 4;
     four_to_five.maximum_credits = 5;
@@ -74,7 +68,6 @@ int main() {
           "degenerate range succeeds");
     check(codes_of(found) == "SE101", "range [3,3] equals an exact match");
 
-    // ---- 教师姓名关键字：只保留这位老师的教学班 ----
     CourseFilter by_name;
     by_name.teacher_keyword = "wang";
     check(catalog.search("", by_name, found).code == ResultCode::Success,
@@ -93,17 +86,15 @@ int main() {
         }
     }
 
-    // ---- 查不到时是"成功 + 空列表"，不是错误 ----
     CourseFilter nobody;
     nobody.teacher_keyword = "nobody";
     check_code(catalog.search("", nobody, found).code, ResultCode::Success,
                "unknown teacher is not an error");
     check(found.empty(), "unknown teacher yields an empty list");
 
-    // ---- teacher_id 与 teacher_keyword 必须落在同一个教学班 ----
     CourseFilter conflict;
     conflict.teacher_id = 300;          // Dr. Zhao
-    conflict.teacher_keyword = "wang";  // 但姓名要含 Wang
+    conflict.teacher_keyword = "wang";
     check(catalog.search("", conflict, found).code == ResultCode::Success,
           "conflicting teacher filters are not an error");
     check(found.empty(), "teacher_id 300 + keyword wang returns nothing");
@@ -115,7 +106,6 @@ int main() {
           "consistent teacher filters succeed");
     check(codes_of(found) == "CS101,SE101", "teacher_id 300 + keyword zhao keeps both");
 
-    // ---- 与既有条件组合 ----
     CourseFilter combined;
     combined.minimum_credits = 5;
     check(catalog.search("program", combined, found).code == ResultCode::Success,
@@ -136,7 +126,6 @@ int main() {
           "exact credit filter still works");
     check(codes_of(found) == "MA101", "exact credits 4 keeps MA101");
 
-    // ---- 余量现算：教学班 10 容量 2、已选 1 ----
     CourseView detail;
     check_code(catalog.detail(1, detail).code, ResultCode::Success, "course detail succeeds");
     check(detail.teaching_classes.size() == 2, "SE101 has two teaching classes");
@@ -155,12 +144,11 @@ int main() {
                "missing course returns RecordNotFound");
     check(detail.course.course_code.empty(), "failed detail clears the previous result");
 
-    // ---- 非法区间：返回 InvalidInput，而不是静默的空列表 ----
     CourseFilter reversed;
     reversed.minimum_credits = 5;
     reversed.maximum_credits = 2;
     found.clear();
-    found.push_back(CourseView{});   // 放一条脏数据，验证失败时会清空
+    found.push_back(CourseView{});
     check_code(catalog.search("", reversed, found).code, ResultCode::InvalidInput,
                "min > max is invalid");
     check(found.empty(), "invalid range clears the result list");

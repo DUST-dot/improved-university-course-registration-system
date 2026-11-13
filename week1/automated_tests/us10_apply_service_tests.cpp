@@ -1,7 +1,5 @@
-// 2.5 US-10 开课申请
+// US-10 section
 //
-// 覆盖：草稿创建与权限、提交的状态迁移与唯一性、撤回、审批、查询清空、
-// 教师维度的列表过滤。
 
 #include "test_support_week2.hpp"
 
@@ -17,7 +15,6 @@ int main() {
     const UserIdentity other_teacher = test_support::teacher_b();
     const UserIdentity student = test_support::student_user();
 
-    // ---- 迁移表本身 ----
     check(can_transition(ApplyStatus::Draft, ApplyStatus::Pending), "Draft -> Pending allowed");
     check(!can_transition(ApplyStatus::Draft, ApplyStatus::Approved),
           "Draft -> Approved is not allowed");
@@ -28,7 +25,6 @@ int main() {
     check(!can_transition(ApplyStatus::Approved, ApplyStatus::Draft),
           "Approved is terminal");
 
-    // ---- 创建草稿 ----
     ApplyRecord draft;
     check_code(service.create_draft(teacher, 1, "2026-2027-1", draft).code, ResultCode::Success,
                "teacher creates a draft");
@@ -38,13 +34,11 @@ int main() {
     check(draft.course_id == 1, "draft records the course");
     check(draft.review_comment.empty(), "draft has no review comment yet");
 
-    // 学生不能申请开课
     ApplyRecord denied;
     check_code(service.create_draft(student, 1, "2026-2027-1", denied).code,
                ResultCode::PermissionDenied, "student cannot apply to open a course");
     check(denied.apply_id == 0, "denied draft leaves the output cleared");
 
-    // 课程不存在 / 学期为空
     ApplyRecord invalid;
     check_code(service.create_draft(teacher, 999, "2026-2027-1", invalid).code,
                ResultCode::RecordNotFound, "unknown course is rejected");
@@ -52,32 +46,27 @@ int main() {
                "empty semester is rejected");
     check(service.size() == 1, "only the valid draft was stored");
 
-    // ---- 提交：草稿 -> 待审批 ----
     check_code(service.submit(draft.apply_id).code, ResultCode::Success, "draft can be submitted");
     ApplyRecord current;
     check_code(service.query(draft.apply_id, current).code, ResultCode::Success, "query after submit");
     check(current.status == ApplyStatus::Pending, "status is Pending after submit");
 
-    // 重复提交：Pending -> Pending 不合法
     check_code(service.submit(draft.apply_id).code, ResultCode::InvalidInput,
                "submitting twice is rejected");
     check(service.query(draft.apply_id, current).code == ResultCode::Success &&
               current.status == ApplyStatus::Pending,
           "failed submit left the status untouched");
 
-    // ---- 唯一性：同课程同学期只能有一条待审批 ----
     ApplyRecord second;
     service.create_draft(teacher, 1, "2026-2027-1", second);
     check_code(service.submit(second.apply_id).code, ResultCode::DuplicateIdentifier,
                "a second pending application for the same course is rejected");
 
-    // 不同学期可以并存
     ApplyRecord other_semester;
     service.create_draft(teacher, 1, "2026-2027-2", other_semester);
     check_code(service.submit(other_semester.apply_id).code, ResultCode::Success,
                "another semester is not a duplicate");
 
-    // ---- 撤回 ----
     check_code(service.withdraw(other_semester.apply_id).code, ResultCode::Success,
                "pending application can be withdrawn");
     check(service.query(other_semester.apply_id, current).code == ResultCode::Success &&
@@ -86,7 +75,6 @@ int main() {
     check_code(service.withdraw(other_semester.apply_id).code, ResultCode::InvalidInput,
                "withdrawing twice is rejected");
 
-    // ---- 审批 ----
     check_code(service.review(draft.apply_id, true, "Approved by the office").code,
                ResultCode::Success, "administrator approves");
     check(service.query(draft.apply_id, current).code == ResultCode::Success &&
@@ -96,7 +84,6 @@ int main() {
     check_code(service.review(draft.apply_id, false, "again").code, ResultCode::InvalidInput,
                "an approved application cannot be reviewed again");
 
-    // 驳回路径
     ApplyRecord reject_target;
     service.create_draft(teacher, 2, "2026-2027-1", reject_target);
     service.submit(reject_target.apply_id);
@@ -105,11 +92,9 @@ int main() {
     check(service.query(reject_target.apply_id, current).code == ResultCode::Success &&
               current.status == ApplyStatus::Rejected && current.review_comment == "Incomplete syllabus",
           "rejection stores its reason");
-    // 驳回后不能直接再提交（必须先回到草稿）
     check_code(service.submit(reject_target.apply_id).code, ResultCode::InvalidInput,
                "a rejected application must go back to Draft before resubmitting");
 
-    // ---- 查询与列表 ----
     ApplyRecord missing;
     check_code(service.query(999, missing).code, ResultCode::RecordNotFound,
                "unknown application returns RecordNotFound");

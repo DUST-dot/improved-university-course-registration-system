@@ -24,7 +24,6 @@ TeachingClassSummary TeacherService::build_summary(const TeachingClass& item) co
     const Teacher* teacher = context_.find_teacher(item.teacher_id);
     summary.teacher_name = teacher == nullptr ? std::string() : teacher->name;
     summary.capacity = item.capacity;
-    // 人数与余量都现算：和学生端看到的是同一批记录，不可能对不上
     summary.active_enrollments = context_.enrollment_count(item.teaching_class_id);
     summary.remaining_seats = context_.remaining_seats(item.teaching_class_id);
     summary.meetings = item.meetings;
@@ -35,14 +34,12 @@ OperationResult TeacherService::assigned_teaching_classes(
     const UserIdentity& user, std::vector<TeachingClassSummary>& result) const {
     result.clear();
 
-    // 入口守卫：学生账号在这里就被挡住，不用等后面过滤
     const OperationResult guard = AuthenticationService::require_role(user, Role::Teacher);
     if (!PermissionRules::is_administrator(user) && guard.code != ResultCode::Success) {
         return guard;
     }
 
     for (const TeachingClass& item : context_.teaching_classes()) {
-        // 教师只列本人的班；管理员可列全部
         if (!PermissionRules::can_view_teaching_class(user, item)) continue;
         result.push_back(build_summary(item));
     }
@@ -62,7 +59,6 @@ OperationResult TeacherService::class_summary(const UserIdentity& user,
     if (!context_.find_teaching_class(teaching_class_id, item)) {
         return {ResultCode::RecordNotFound, "Teaching class not found"};
     }
-    // 即使 id 猜对也读不到别人的班
     if (!PermissionRules::can_view_teaching_class(user, item)) {
         return {ResultCode::PermissionDenied, "You can only view your own teaching classes"};
     }
@@ -90,12 +86,11 @@ OperationResult TeacherService::class_roster(const UserIdentity& user,
 
     for (const Enrollment& record : context_.all_enrollments()) {
         if (record.teaching_class_id != teaching_class_id) continue;
-        if (record.status != EnrollmentStatus::Active) continue;   // 退课不出现
+        if (record.status != EnrollmentStatus::Active) continue;
         const Student* student = context_.find_student(record.student_id);
         if (student == nullptr) continue;
         result.students.push_back({student->student_id, student->student_number, student->name});
     }
-    // 按学号排序，保证同样的数据每次输出一致
     std::sort(result.students.begin(), result.students.end(),
               [](const RosterEntry& left, const RosterEntry& right) {
                   return left.student_number < right.student_number;

@@ -1,7 +1,5 @@
-// 2.3 US-09 教师登录
+// US-09 section
 //
-// 覆盖：教师登录成功、角色守卫（学生进不去教师端、教师进不去教务端）、
-// 教学班列表只含本人、单个教学班越权读不到、名单只含 Active 且按学号排序。
 
 #include "test_support.hpp"
 
@@ -22,7 +20,6 @@ std::vector<int> ids_of(const std::vector<TeachingClassSummary>& items) {
 int main() {
     SystemContext context = test_support::make_context();
     context.set_now_for_tests("2026-10-05T09:00");
-    // 教学班 10 有 1 条有效选课，另加 1 条已退课记录（应不出现在名单里）
     context.add_enrollment(1002, 10);
     context.add_dropped_enrollment(1003, 10);
 
@@ -30,7 +27,6 @@ int main() {
     UserIdentity identity;
     std::string token;
 
-    // ---- 登录成功 ----
     check_code(auth.login("T2015007", "Teach1234", identity, token).code, ResultCode::Success,
                "teacher login succeeds");
     check(identity.user_id == 100, "teacher identity keeps teacher_id");
@@ -42,7 +38,6 @@ int main() {
                ResultCode::AuthenticationFailed, "teacher wrong password fails");
     check(identity.user_id == 0 && token.empty(), "failed teacher login clears identity");
 
-    // ---- 角色守卫：三个方向的越权都要拦住 ----
     const UserIdentity student = test_support::student_identity();
     const UserIdentity wang = test_support::teacher_identity(100);
     const UserIdentity admin = test_support::admin_identity();
@@ -56,7 +51,6 @@ int main() {
     check_code(AuthenticationService::require_role(wang, Role::Student).code,
                ResultCode::PermissionDenied, "teacher rejected by student entry");
 
-    // ---- 教学班列表：只含本人 ----
     TeacherService teacher_service(context);
     std::vector<TeachingClassSummary> classes;
 
@@ -78,18 +72,15 @@ int main() {
     check(ids_of(classes) == std::vector<int>({11, 30}), "Zhao owns classes 11 and 30");
     check(ids_of(classes) == std::vector<int>({11, 30}), "list is sorted by teaching_class_id");
 
-    // 学生走教师入口：守卫直接拒绝，不返回任何班级
     classes.clear();
     check_code(teacher_service.assigned_teaching_classes(student, classes).code,
                ResultCode::PermissionDenied, "student cannot list teaching classes");
     check(classes.empty(), "student gets an empty list, not other people's classes");
 
-    // 管理员可以列全部
     check_code(teacher_service.assigned_teaching_classes(admin, classes).code, ResultCode::Success,
                "administrator lists all classes");
     check(classes.size() == 4, "administrator sees all four classes");
 
-    // ---- 单个教学班：越权读不到 ----
     TeachingClassSummary summary;
     check_code(teacher_service.class_summary(wang, 10, summary).code, ResultCode::Success,
                "teacher reads own class summary");
@@ -107,7 +98,6 @@ int main() {
     check_code(teacher_service.class_summary(admin, 30, summary).code, ResultCode::Success,
                "administrator can read any class");
 
-    // ---- 名单：只含 Active，按学号排序 ----
     ClassRoster roster;
     check_code(teacher_service.class_roster(wang, 10, roster).code, ResultCode::Success,
                "teacher reads own roster");
@@ -117,7 +107,6 @@ int main() {
     check(roster.capacity == 2 && roster.active_enrollments == 1 && roster.remaining_seats == 1,
           "roster counts match the summary");
 
-    // 再加一个学生，验证按学号排序
     context.add_enrollment(1001, 10);
     check_code(teacher_service.class_roster(wang, 10, roster).code, ResultCode::Success,
                "roster reloads after a new enrollment");

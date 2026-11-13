@@ -6,7 +6,6 @@
 namespace course_selection {
 namespace {
 
-// ISO 时刻（YYYY-MM-DDTHH:MM）折成分钟数，才能做“加 15 分钟”和比较。
 long long days_from_civil(int year, unsigned month, unsigned day) {
     year -= month <= 2 ? 1 : 0;
     const long long era = (year >= 0 ? year : year - 399) / 400;
@@ -160,8 +159,6 @@ std::string PasswordHasher::sha256_hex(const std::string& text) {
 }
 
 std::string PasswordHasher::make_salt(const std::string& seed) {
-    // 确定性盐：同一份演示数据每次构造结果相同，测试才能断言固定哈希。
-    // 真实系统应换成随机源，接口不变。
     return sha256_hex_impl("course_selection|salt|" + seed).substr(0, 16);
 }
 
@@ -233,7 +230,6 @@ bool AuthenticationService::account_number_well_formed(const std::string& accoun
 
 const AccountCredential* AuthenticationService::find_credential(
     const std::string& account_number) const {
-    // 账号比较不区分大小写：学生常把小写 s 打成大写 S。
     const std::string lowered = to_lower_copy(account_number);
     for (const AccountCredential& credential : credentials_) {
         if (to_lower_copy(credential.account_number) == lowered) return &credential;
@@ -261,7 +257,6 @@ bool AuthenticationService::role_account_active(const AccountCredential& credent
 
 std::string AuthenticationService::next_token(const std::string& account_number) {
     ++token_counter_;
-    // 加序号，保证同一分钟内连续登录两次也不会撞令牌
     return PasswordHasher::sha256_hex(
                account_number + "|" + context_.now() + "|" +
                std::to_string(token_counter_))
@@ -272,7 +267,7 @@ OperationResult AuthenticationService::login(const std::string& account_number,
                                              const std::string& password,
                                              UserIdentity& identity,
                                              std::string& token) {
-    identity = UserIdentity{};   // 失败时不留上一次的身份
+    identity = UserIdentity{};
     token.clear();
 
     if (!account_number_well_formed(account_number) || password.empty()) {
@@ -282,12 +277,11 @@ OperationResult AuthenticationService::login(const std::string& account_number,
     const std::string now = context_.now();
     AccountState& state = states_[account_number];
 
-    // 锁定优先于一切：锁定期内即使密码正确也拒绝，否则锁定形同虚设
     if (!state.locked_until.empty() && moment_before(now, state.locked_until)) {
         return {ResultCode::AccountLocked,
                 "Account is locked until " + state.locked_until};
     }
-    if (!state.locked_until.empty()) {   // 锁定已过期，从头计数
+    if (!state.locked_until.empty()) {
         state.locked_until.clear();
         state.failures = 0;
     }
@@ -305,7 +299,6 @@ OperationResult AuthenticationService::login(const std::string& account_number,
                     "Too many failed attempts, account locked until " +
                         state.locked_until};
         }
-        // 账号不存在与密码错误返回同一句话，避免用登录接口枚举学号
         return {ResultCode::AuthenticationFailed,
                 "Account number or password is incorrect"};
     }
@@ -337,7 +330,7 @@ OperationResult AuthenticationService::validate_session(const std::string& token
         return {ResultCode::SessionInvalid, "Session token is unknown or logged out"};
     }
     if (!moment_before(context_.now(), found->second.expires_at)) {
-        sessions_.erase(found);   // 过期即删除，避免会话表只增不减
+        sessions_.erase(found);
         return {ResultCode::SessionExpired, "Session has expired, please sign in again"};
     }
     identity = found->second.user;

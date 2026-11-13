@@ -1,15 +1,9 @@
 #pragma once
 
 // ============================================================================
-// 登录与身份（US-01 学生 / US-09 教师 / US-13 教务）
+// US-01 section
 //
-// 只做一件事：把「账号 + 密码」换成业务模块要的 UserIdentity。
-// 不读课程、不改选课记录；账号资料在 SystemContext 里，这里只引用。
 //
-// 三条规矩：
-//   1. 密码不存明文，只存「盐 + 迭代哈希」，校验时重算再比对。
-//   2. 账号不存在与密码错误返回同一个失败原因，防止用登录接口枚举学号。
-//   3. 连续失败达上限后锁定；锁定期内即使密码正确也拒绝；到期按时间自动解锁。
 // ============================================================================
 
 #include <map>
@@ -24,8 +18,8 @@ struct AccountCredential {
     int user_id;
     std::string account_number;
     Role role;
-    std::string salt;           // 十六进制
-    std::string password_hash;  // 十六进制
+    std::string salt;
+    std::string password_hash;
 };
 
 struct SessionInfo {
@@ -35,7 +29,6 @@ struct SessionInfo {
     std::string expires_at;
 };
 
-// 只用标准库实现：SHA-256(FIPS 180-4) + 盐 + 迭代，避免引入 OpenSSL。
 class PasswordHasher {
 public:
     static constexpr int kIterations = 1000;
@@ -45,7 +38,6 @@ public:
     static std::string hash(const std::string& password, const std::string& salt);
     static bool verify(const std::string& password, const std::string& salt,
                        const std::string& expected_hash);
-    // 设置密码时的格式要求；登录时**不**调用它，否则用错误信息就能反推长度。
     static bool acceptable_password(const std::string& password);
 };
 
@@ -72,7 +64,6 @@ public:
     bool is_locked(const std::string& account_number) const;
     int failure_count(const std::string& account_number) const;
 
-    // 各端入口的第一句：拿学生账号进教师端会在这里被挡住。
     static OperationResult require_role(const UserIdentity& user, Role role);
 
     static bool account_number_well_formed(const std::string& account_number);
@@ -80,13 +71,12 @@ public:
 private:
     struct AccountState {
         int failures{0};
-        std::string locked_until;  // 空表示未锁定
+        std::string locked_until;
     };
 
     const AccountCredential* find_credential(const std::string& account_number) const;
     bool role_account_active(const AccountCredential& credential) const;
     std::string next_token(const std::string& account_number);
-    // 供测试与演示直接造凭据，不必在外部重复写盐和哈希。
     static AccountCredential make_credential(int user_id, const std::string& number,
                                              Role role, const std::string& password);
 
