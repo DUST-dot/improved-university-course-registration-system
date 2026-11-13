@@ -26,7 +26,7 @@ int days_in_month(int year, int month) {
     return table[month - 1];
 }
 
-// 公历日期转"自 1970-01-01 起的天数"（Howard Hinnant 算法）
+// Days since 1970-01-01 (Howard Hinnant's algorithm, no loops).
 long long days_from_civil(int year, unsigned month, unsigned day) {
     year -= month <= 2 ? 1 : 0;
     const long long era = (year >= 0 ? year : year - 399) / 400;
@@ -75,7 +75,7 @@ bool moment_before(const std::string& a, const std::string& b) {
     long long left = 0;
     long long right = 0;
     if (!parse_iso_minute(a, left) || !parse_iso_minute(b, right)) {
-        return a < b;   // 定长格式下字典序等价于时间序
+        return a < b;   // fixed width format, so lexicographic order equals time order
     }
     return left < right;
 }
