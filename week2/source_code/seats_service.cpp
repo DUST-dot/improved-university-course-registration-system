@@ -4,7 +4,7 @@ namespace course_selection {
 
 OperationResult StudentQueryService::view_available_seats(int teaching_class_id,
                                                           SeatsView& result) const {
-    result = SeatsView{};   // 进来先清空，失败时不留下上一次的容量与余量
+    result = SeatsView{};
 
     TeachingClass item{};
     if (!context_.find_teaching_class(teaching_class_id, item)) {

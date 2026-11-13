@@ -15,7 +15,6 @@ const char* apply_status_name(ApplyStatus status) {
     return "Unknown";
 }
 
-// 合法迁移写在一张表里，改规则只改这里
 bool can_transition(ApplyStatus from, ApplyStatus to) {
     switch (from) {
         case ApplyStatus::Draft:
@@ -24,11 +23,11 @@ bool can_transition(ApplyStatus from, ApplyStatus to) {
             return to == ApplyStatus::Approved || to == ApplyStatus::Rejected ||
                    to == ApplyStatus::Withdrawn;
         case ApplyStatus::Rejected:
-            return to == ApplyStatus::Draft;      // 驳回后可以改完再提交
+            return to == ApplyStatus::Draft;
         case ApplyStatus::Withdrawn:
             return to == ApplyStatus::Draft;
         case ApplyStatus::Approved:
-            return false;                          // 通过之后不可再变
+            return false;
     }
     return false;
 }
@@ -51,7 +50,7 @@ OperationResult ApplyService::create_draft(const UserIdentity& user,
                                            int course_id,
                                            const std::string& semester,
                                            ApplyRecord& created) {
-    created = ApplyRecord{};   // 失败时不留上一次的结果
+    created = ApplyRecord{};
 
     if (!PermissionRules::can_open_course(user)) {
         return {ResultCode::PermissionDenied, "Only teachers can apply to open a course"};
@@ -85,7 +84,6 @@ OperationResult ApplyService::submit(int apply_id) {
                 std::string("Cannot submit an application in status ") +
                     apply_status_name(record->status)};
     }
-    // 唯一性：同一课程同一学期不能有两条待审批
     for (const ApplyRecord& other : records_) {
         if (other.apply_id == record->apply_id) continue;
         if (other.course_id == record->course_id && other.semester == record->semester &&

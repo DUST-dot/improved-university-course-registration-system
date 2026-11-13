@@ -44,7 +44,6 @@ OperationResult RegistrationWindowService::set_registration_period(
         return {ResultCode::InvalidInput, "The opening time must be earlier than closing"};
     }
 
-    // 与已存在的轮次判交：a_start < b_end && b_start < a_end
     for (const RegistrationRound& existing : context_.registration_rounds()) {
         long long a = 0;
         long long b = 0;
@@ -54,7 +53,7 @@ OperationResult RegistrationWindowService::set_registration_period(
         }
         const bool same_round =
             existing.opens_at == opens_at && existing.closes_at == closes_at;
-        if (same_round) continue;   // 重复提交同一轮次，不算冲突
+        if (same_round) continue;
         if (open_min < b && a < close_min) {
             return {ResultCode::InvalidInput, "Overlaps with an existing round"};
         }
@@ -66,8 +65,6 @@ OperationResult RegistrationWindowService::set_registration_period(
     rule.registration_open = true;
     context_.apply_rule_change(rule);
 
-    // 同一轮次重复提交是允许的（管理员可能只是重设一次），但不该登记两条：
-    // 否则轮次列表里会出现两条一模一样的区间，后续判重叠也会多绕一圈。
     const bool already_recorded =
         std::any_of(context_.registration_rounds().begin(),
                     context_.registration_rounds().end(),
@@ -106,7 +103,7 @@ OperationResult RegistrationWindowService::window_state_at(const std::string& no
 }
 
 // ---------------------------------------------------------------------------
-// US-11（含 US-09）
+// US-11 section
 // ---------------------------------------------------------------------------
 
 TeachingClassSummary TeacherService::build_summary(const TeachingClass& item) const {
@@ -120,7 +117,7 @@ TeachingClassSummary TeacherService::build_summary(const TeachingClass& item) co
         summary.course_name = course.course_name;
     }
     summary.capacity = item.capacity;
-    summary.active_enrollments = context_.enrollment_count(item.teaching_class_id);  // 唯一口径
+    summary.active_enrollments = context_.enrollment_count(item.teaching_class_id);
     summary.remaining_seats = context_.remaining_seats(item.teaching_class_id);
     return summary;
 }
@@ -128,7 +125,6 @@ TeachingClassSummary TeacherService::build_summary(const TeachingClass& item) co
 OperationResult TeacherService::assigned_teaching_classes(
     const UserIdentity& user, std::vector<TeachingClassSummary>& result) const {
     result.clear();
-    // 学生没有教师入口；教师只列本人的班；管理员可列全部
     if (!PermissionRules::is_teacher(user) && !PermissionRules::is_administrator(user)) {
         return {ResultCode::PermissionDenied, "This entry requires a different role"};
     }
@@ -175,7 +171,7 @@ OperationResult TeacherService::class_roster(const UserIdentity& user,
     result.teaching_class_id = item.teaching_class_id;
     for (const Enrollment& record : context_.all_enrollments()) {
         if (record.teaching_class_id != teaching_class_id) continue;
-        if (record.status != EnrollmentStatus::Active) continue;   // 退课不出现
+        if (record.status != EnrollmentStatus::Active) continue;
         const Student* student = context_.find_student(record.student_id);
         if (student == nullptr) continue;
         result.students.push_back(

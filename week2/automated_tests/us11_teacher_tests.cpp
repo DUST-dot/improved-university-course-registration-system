@@ -1,7 +1,5 @@
-// 2.8 US-11 教师端：班级概览与名单
+// US-11 section
 //
-// 覆盖：人数与余量口径、越权、名单只含 Active、按学号排序、
-// 以及合并后保留的 week1 接口 assigned_teaching_classes。
 
 #include "test_support_week3.hpp"
 
@@ -13,12 +11,11 @@ int main() {
     SystemContext context = test_support::make_context();
     TeacherService service(context);
 
-    const UserIdentity teacher_a = test_support::teacher_a();     // 工号 100，带班 10、12
-    const UserIdentity teacher_b = test_support::teacher_b();     // 工号 200，带班 11
+    const UserIdentity teacher_a = test_support::teacher_a();
+    const UserIdentity teacher_b = test_support::teacher_b();
     const UserIdentity admin = test_support::admin_user();
     const UserIdentity student = test_support::student_user();
 
-    // ---- 班级概览 ----
     TeachingClassSummary summary;
     check_code(service.class_summary(teacher_a, 10, summary).code, ResultCode::Success,
                "teacher reads own class 10");
@@ -46,7 +43,6 @@ int main() {
     check_code(service.class_summary(student, 10, summary).code, ResultCode::PermissionDenied,
                "student has no teacher entry");
 
-    // ---- 名单 ----
     ClassRoster roster;
     check_code(service.class_roster(teacher_a, 10, roster).code, ResultCode::Success,
                "teacher reads own roster");
@@ -57,7 +53,6 @@ int main() {
     check(!roster.students.empty() && roster.students[0].student_id == 1000,
           "roster entry keeps the student id");
 
-    // 再加一名学生，验证排序
     context.add_enrollment(1001, 10);
     check_code(service.class_roster(teacher_a, 10, roster).code, ResultCode::Success,
                "roster reloads");
@@ -70,7 +65,6 @@ int main() {
                "another teacher cannot read this roster");
     check(roster.students.empty(), "denied roster is cleared");
 
-    // ---- 合并保留的 week1 接口：列出本人教学班 ----
     std::vector<TeachingClassSummary> own;
     check_code(service.assigned_teaching_classes(teacher_a, own).code, ResultCode::Success,
                "teacher lists own classes");

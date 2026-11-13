@@ -1,11 +1,8 @@
 #pragma once
 
 // ============================================================================
-// 2.9 US-12 调课 / 停课申请（移植自 se-course-system-tasks，适配统一模型）
+// US-12 section
 //
-// 复用 2.5 的 ApplyStatus 状态机：申请提交后进入 Pending，可撤回、可审批。
-// 额外一条硬约束：已有学生选课的班不允许静默停课，必须写明原因——
-// 这条只能在提交时校验，审批时补就晚了。
 // ============================================================================
 
 #include <string>
@@ -43,7 +40,6 @@ public:
     OperationResult query(const UserIdentity& user, int request_id, ChangeRequest& result) const;
     OperationResult list_for_teacher(int teacher_id, std::vector<ChangeRequest>& result) const;
 
-    // 待发送通知：先落队列，由演示层统一打印，不阻塞提交
     const std::vector<std::string>& pending_notices() const { return pending_notices_; }
     void clear_pending_notices() { pending_notices_.clear(); }
 

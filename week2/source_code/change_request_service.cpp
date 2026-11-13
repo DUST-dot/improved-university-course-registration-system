@@ -40,12 +40,10 @@ OperationResult ChangeRequestService::submit(const UserIdentity& user,
     if (!context_.find_teaching_class(teaching_class_id, item)) {
         return {ResultCode::RecordNotFound, "Teaching class not found"};
     }
-    // 只能针对自己的教学班，且这条判断同时覆盖"是不是本人"
     if (!PermissionRules::can_submit_change_request(user, item)) {
         return {ResultCode::PermissionDenied, "Not your teaching class"};
     }
 
-    // 已有学生选的班不允许静默停课，必须写明原因
     if (type == ChangeType::Cancellation) {
         const int enrolled = context_.enrollment_count(teaching_class_id);
         if (enrolled > 0 && reason.empty()) {

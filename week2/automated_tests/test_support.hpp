@@ -1,14 +1,8 @@
 #pragma once
 
 // ============================================================================
-// Week 2 测试公共件：断言计数器 + 固定演示数据
 //
-// 数据沿用 se-course-system-tasks 的 fixtures（2 门课、3 名学生、3 个教学班），
-// 但改用统一后的构造方式：context.add_* 而不是直接 push_back 公有容器。
 //
-//   班 10：容量 2，1 人选（另有 1 人已退课）→ 余量 1
-//   班 11：容量 1，1 人选 → 余量 0（已满）
-//   班 12：容量 3，0 人选 → 余量 3
 // ============================================================================
 
 #include <iostream>
@@ -77,7 +71,7 @@ inline course_selection::SystemContext make_context() {
     context.add_teaching_class(TeachingClass{12, 1, 100, 3, "WED-1-2", "A204", "2026-2027-1"});
 
     context.add_enrollment(1000, 10);
-    context.add_dropped_enrollment(1001, 10);   // 退课不计入人数
+    context.add_dropped_enrollment(1001, 10);
     context.add_enrollment(1002, 11);
 
     context.set_now_for_tests("2026-10-12T09:00");
