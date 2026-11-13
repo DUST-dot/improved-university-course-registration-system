@@ -93,7 +93,7 @@ int SystemContext::enrollment_count(int teaching_class_id) const {
 int SystemContext::remaining_seats(int teaching_class_id) const {
     TeachingClass item{};
     if (!find_teaching_class(teaching_class_id, item)) return 0;
-    // 唯一的余量算法：三个端都调它，不可能出现两个数对不上
+    // The only seat calculation; every view calls it, so the numbers always agree.
     return item.capacity - enrollment_count(teaching_class_id);
 }
 
