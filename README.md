@@ -16,11 +16,13 @@ headers, sources, tests and build script.
 | [`feature/week4`](../../tree/feature/week4) | 2.15-2.17 | US-05 feedback, US-18 distribution, US-07 timetable | 32 | `v1.0-week4` |
 | [`feature/week5`](../../tree/feature/week5) | 2.18 | US-08 recommendation | 12 | `v1.0-week5` |
 | [`feature/week6`](../../tree/feature/week6) | 2.19-2.20 | US-19 performance, US-20 data reliability | 16 | `v1.0-week6` |
+| [`feature/week8`](../../tree/feature/week8) | 2.21-2.22 | US-21 security, US-22 usability | 19 | `v1.0-week8` |
+| [`feature/week9`](../../tree/feature/week9) | 2.23-2.24 | US-23 maintainability, US-24 release and buffer | 6 | `v1.0-week9` |
 
-Total: **501 assertions, all passing**, no warnings under `-Wall -Wextra`.
+Total: **526 assertions, all passing**, no warnings under `-Wall -Wextra`.
 
-Sections 2.21-2.24 (security, usability, maintainability, release) are implemented
-locally but are not published yet: the schedule has not reached them.
+All 24 sections are delivered. Weeks 7 and 10 add no new section: section 2.20
+spans weeks 6-7 and 2.24 spans weeks 9-10, so their folders stay where the work starts.
 
 ## Repository layout
 
@@ -31,6 +33,8 @@ week3/   sections 2.10-2.14
 week4/   sections 2.15-2.17
 week5/   sections 2.18
 week6/   sections 2.19-2.20
+week8/   sections 2.21-2.22
+week9/   sections 2.23-2.24
 ```
 
 Inside every week folder:
@@ -57,8 +61,8 @@ The script prints `ALL BUILD AND TESTS PASSED` and returns exit code 0.
 ## Test results
 
 ```text
-week1  218 checks    week4   32 checks
-week2  121 checks    week5   12 checks
+week1  218 checks    week4   32 checks    week8   19 checks
+week2  121 checks    week5   12 checks    week9    6 checks
 week3  102 checks    week6   16 checks
 ```
 
